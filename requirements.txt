@@ -1,11 +1,9 @@
-fastapi
-uvicorn[standard]
+openai>=1.0.0
 pandas
 numpy
 matplotlib
 seaborn
-openpyxl
-pdfplumber
-python-multipart
 scikit-learn
-PyPDF2
+pdfplumber
+python-docx
+openpyxl
