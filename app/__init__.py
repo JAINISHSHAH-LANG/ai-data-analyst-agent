@@ -1,16 +1,33 @@
 # app/__init__.py
-"""
-This file marks the app folder as a Python package.
-No FastAPI routes should be defined here.
-"""
 
-import os
+from .main import app
 
-# Ensure OpenAI key is available
-if not os.getenv("OPENAI_API_KEY"):
-    raise EnvironmentError(
-        "Missing OPENAI_API_KEY. Please set it in Render Dashboard under Environment Variables."
-)
+@app.get("/")
+async def root():
+    return {"message": "AI Data Analyst Agent is running 🚀. Use POST /api/ to upload files."}
+
+
+
+
+
+
+
+
+
+
+# # app/__init__.py
+# """
+# This file marks the app folder as a Python package.
+# No FastAPI routes should be defined here.
+# """
+
+# import os
+
+# # Ensure OpenAI key is available
+# if not os.getenv("OPENAI_API_KEY"):
+#     raise EnvironmentError(
+#         "Missing OPENAI_API_KEY. Please set it in Render Dashboard under Environment Variables."
+# )
 
 
 
