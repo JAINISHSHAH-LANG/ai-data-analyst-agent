@@ -1,0 +1,41 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+.env
+.env.* 
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor configs
+.vscode/
+.idea/
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# Uploaded files (user data)
+uploads/
+questions/
+*.csv
+*.xlsx
+*.pdf
+*.png
+*.jpg
+*.jpeg
+
+# Docker
+*.dockerignore
+*.tar
+docker-compose.override.yml
+
+# Environment or secret keys
+*.env
