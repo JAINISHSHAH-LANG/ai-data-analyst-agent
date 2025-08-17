@@ -7,3 +7,7 @@ scikit-learn
 pdfplumber
 python-docx
 openpyxl
+fastapi
+uvicorn[standard]
+python-multipart
+
