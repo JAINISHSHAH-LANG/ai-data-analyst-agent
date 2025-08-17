@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+pandas
+numpy
+matplotlib
+seaborn
+openpyxl
+pdfplumber
+python-multipart
+scikit-learn
+PyPDF2
