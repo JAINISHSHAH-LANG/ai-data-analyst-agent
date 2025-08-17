@@ -1,4 +1,5 @@
 # app/__init__.py
+from .main import app
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import JSONResponse
 from typing import List, Optional
