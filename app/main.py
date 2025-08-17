@@ -1,36 +1,109 @@
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
-from typing import List, Optional
 import pandas as pd
-from app import utils
+import pdfplumber
+import os
+import tempfile
+from typing import List
+from openai import OpenAI
 
-app = FastAPI(title="AI Data Analyst Agent API 🚀")
+# Initialize FastAPI app
+app = FastAPI(title="AI Data Analyst Agent 🚀")
 
-@app.post("/api/")
-async def analyze(
-    questions_file: UploadFile,
-    data_files: Optional[List[UploadFile]] = None
+# Initialize OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+# ---------- Utility functions ----------
+def load_data(file: UploadFile):
+    """Reads uploaded data file into DataFrame."""
+    suffix = file.filename.split(".")[-1].lower()
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=f".{suffix}")
+    tmp.write(file.file.read())
+    tmp.close()
+
+    if suffix in ["csv"]:
+        return pd.read_csv(tmp.name)
+    elif suffix in ["xls", "xlsx"]:
+        return pd.read_excel(tmp.name)
+    elif suffix in ["txt"]:
+        return pd.read_csv(tmp.name, sep="\t")
+    elif suffix in ["pdf"]:
+        text = ""
+        with pdfplumber.open(tmp.name) as pdf:
+            for page in pdf.pages:
+                text += page.extract_text() + "\n"
+        return text
+    else:
+        raise ValueError(f"Unsupported file format: {suffix}")
+
+
+def summarize_dataframe(df: pd.DataFrame) -> str:
+    """Generate structured analysis summary of dataframe."""
+    summary = {
+        "shape": df.shape,
+        "columns": list(df.columns),
+        "null_values": df.isnull().sum().to_dict(),
+        "summary_stats": df.describe(include="all").to_dict(),
+        "correlations": df.corr(numeric_only=True).to_dict(),
+    }
+    return str(summary)
+
+
+def ask_llm(question: str, context: str) -> str:
+    """Ask OpenAI model with question + context."""
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a highly skilled Data Analyst."},
+            {"role": "user", "content": f"Context:\n{context}\n\nQuestion:\n{question}"}
+        ]
+    )
+    return response.choices[0].message.content
+
+
+# ---------- API Endpoint ----------
+@app.post("/analyze")
+async def analyze_data(
+    data_files: List[UploadFile] = File(...),
+    questions_file: UploadFile = File(...)
 ):
     try:
-        questions_text = utils.read_file(questions_file)
-        questions = []
-        if isinstance(questions_text, str):
-            questions = [line.strip() for line in questions_text.split("\n") if line.strip()]
-        elif isinstance(questions_text, pd.DataFrame):
-            questions = questions_text.iloc[:,0].astype(str).tolist()
-        
-        analyses = {}
-        if data_files:
-            for file in data_files:
-                content = utils.read_file(file)
-                if isinstance(content, pd.DataFrame):
-                    analyses[file.filename] = utils.analyze_dataframe(content, questions)
-                else:
-                    analyses[file.filename] = {"content": content}
-        
-        return JSONResponse(content={
+        # Load data files
+        dataframes = []
+        text_data = []
+        for f in data_files:
+            loaded = load_data(f)
+            if isinstance(loaded, pd.DataFrame):
+                dataframes.append(loaded)
+            else:
+                text_data.append(loaded)
+
+        # Merge dataframes if multiple
+        if len(dataframes) > 0:
+            df = pd.concat(dataframes, ignore_index=True)
+            analysis_summary = summarize_dataframe(df)
+        else:
+            analysis_summary = "\n".join(text_data)
+
+        # Load questions
+        questions_content = load_data(questions_file)
+        if isinstance(questions_content, pd.DataFrame):
+            questions = " ".join(
+                [str(q) for q in questions_content.iloc[:, 0].tolist()]
+            )
+        else:
+            questions = str(questions_content)
+
+        # Ask LLM
+        answers = ask_llm(questions, analysis_summary)
+
+        return JSONResponse({
+            "status": "success",
             "questions": questions,
-            "analysis": analyses
+            "answers": answers
         })
+
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=400)
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
